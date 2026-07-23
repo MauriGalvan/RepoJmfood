@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { HashRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { HashRouter, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import { initDB } from './db';
 import Login from './pages/Login';
 import Venta from './pages/Venta';
@@ -12,29 +12,69 @@ import './App.css';
 
 function Nav({ user, onLogout }) {
   const loc = useLocation();
-  const tabs = [
+  const navigate = useNavigate();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  const mainTabs = [
     { path: '/', label: 'Venta', icon: '🛒' },
     { path: '/historial', label: 'Historial', icon: '📋' },
-    { path: '/productos', label: 'Productos', icon: '🍔' },
-    { path: '/clientes', label: 'Clientes', icon: '👥' },
     { path: '/caja', label: 'Caja', icon: '💰' },
   ];
-  if (user.rol === 'admin') {
-    tabs.push({ path: '/usuarios', label: 'Usuarios', icon: '🔑' });
+
+  const menuItems = [
+    { path: '/productos', label: 'Productos', icon: '🍔' },
+    { path: '/clientes', label: 'Clientes', icon: '👥' },
+    ...(user.rol === 'admin' ? [{ path: '/usuarios', label: 'Usuarios', icon: '🔑' }] : []),
+  ];
+
+  function handleMenuClick(path) {
+    setMenuOpen(false);
+    navigate(path);
   }
+
   return (
-    <nav className="bottom-nav">
-      {tabs.map(t => (
-        <Link key={t.path} to={t.path} className={`nav-item ${loc.pathname === t.path ? 'active' : ''}`}>
-          <span className="nav-icon">{t.icon}</span>
-          <span className="nav-label">{t.label}</span>
-        </Link>
-      ))}
-      <button className="nav-item" onClick={onLogout}>
-        <span className="nav-icon">🚪</span>
-        <span className="nav-label">Salir</span>
-      </button>
-    </nav>
+    <>
+      {menuOpen && <div className="menu-overlay" onClick={() => setMenuOpen(false)} />}
+      <div className={`side-menu ${menuOpen ? 'open' : ''}`}>
+        <div className="side-menu-header">
+          <div className="side-menu-logo">JM</div>
+          <div>
+            <div className="side-menu-user">{user.usuario}</div>
+            <div className="side-menu-role">{user.rol}</div>
+          </div>
+        </div>
+        <div className="side-menu-items">
+          {menuItems.map(item => (
+            <button
+              key={item.path}
+              className={`side-menu-item ${loc.pathname === item.path ? 'active' : ''}`}
+              onClick={() => handleMenuClick(item.path)}
+            >
+              <span>{item.icon}</span>
+              <span>{item.label}</span>
+            </button>
+          ))}
+          <div className="side-menu-divider" />
+          <button className="side-menu-item logout" onClick={onLogout}>
+            <span>🚪</span>
+            <span>Salir</span>
+          </button>
+        </div>
+      </div>
+
+      <nav className="bottom-nav">
+        {mainTabs.map(t => (
+          <Link key={t.path} to={t.path} className={`nav-item ${loc.pathname === t.path ? 'active' : ''}`}>
+            <span className="nav-icon">{t.icon}</span>
+            <span className="nav-label">{t.label}</span>
+          </Link>
+        ))}
+        <button className={`nav-item ${menuOpen ? 'active' : ''}`} onClick={() => setMenuOpen(!menuOpen)}>
+          <span className="nav-icon">☰</span>
+          <span className="nav-label">Menú</span>
+        </button>
+      </nav>
+    </>
   );
 }
 
