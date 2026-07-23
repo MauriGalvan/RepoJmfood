@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'rotiseria';
-const DB_VERSION = 4;
+const DB_VERSION = 5;
 
 const defaultProducts = [
   // Hamburguesas - Cheese
@@ -89,7 +89,10 @@ const defaultProducts = [
 
 async function getDB() {
   return openDB(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion) {
+      if (oldVersion < 5 && db.objectStoreNames.contains('usuarios')) {
+        db.deleteObjectStore('usuarios');
+      }
       if (!db.objectStoreNames.contains('productos')) {
         const productos = db.createObjectStore('productos', { keyPath: 'id', autoIncrement: true });
         productos.createIndex('categoria', 'categoria');
@@ -141,11 +144,11 @@ async function hashPassword(password) {
 
 async function seedUsuarios() {
   const db = await getDB();
-  const count = await db.count('usuarios');
-  if (count === 0) {
-    const hashed = await hashPassword('admin123');
-    await db.add('usuarios', { usuario: 'admin', password: hashed, rol: 'admin' });
-  }
+  const tx = db.transaction('usuarios', 'readwrite');
+  await tx.store.clear();
+  const hashed = await hashPassword('rotiseria12');
+  await tx.store.add({ usuario: 'jmfood', password: hashed, rol: 'admin' });
+  await tx.done;
 }
 
 export async function login(usuario, password) {
