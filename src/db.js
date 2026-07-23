@@ -1,7 +1,7 @@
 import { openDB } from 'idb';
 
 const DB_NAME = 'rotiseria';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 const defaultProducts = [
   // Hamburguesas - Cheese
@@ -115,6 +115,9 @@ async function getDB() {
         const caja = db.createObjectStore('caja', { keyPath: 'id', autoIncrement: true });
         caja.createIndex('fecha', 'fecha');
       }
+      if (!db.objectStoreNames.contains('usuarios')) {
+        db.createObjectStore('usuarios', { keyPath: 'id', autoIncrement: true });
+      }
     },
   });
 }
@@ -127,6 +130,46 @@ async function seedProductos() {
     await tx.store.add(p);
   }
   await tx.done;
+}
+
+async function hashPassword(password) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hash = await crypto.subtle.digest('SHA-256', data);
+  return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function seedUsuarios() {
+  const db = await getDB();
+  const count = await db.count('usuarios');
+  if (count === 0) {
+    const hashed = await hashPassword('admin123');
+    await db.add('usuarios', { usuario: 'admin', password: hashed, rol: 'admin' });
+  }
+}
+
+export async function login(usuario, password) {
+  const db = await getDB();
+  const all = await db.getAll('usuarios');
+  const hashed = await hashPassword(password);
+  const user = all.find(u => u.usuario === usuario && u.password === hashed);
+  return user || null;
+}
+
+export async function getUsuarios() {
+  const db = await getDB();
+  return db.getAll('usuarios');
+}
+
+export async function addUsuario(usuario, password, rol = 'usuario') {
+  const db = await getDB();
+  const hashed = await hashPassword(password);
+  return db.add('usuarios', { usuario, password: hashed, rol });
+}
+
+export async function deleteUsuario(id) {
+  const db = await getDB();
+  return db.delete('usuarios', id);
 }
 
 // Productos
@@ -249,6 +292,7 @@ export async function getCajas() {
 // Init
 export async function initDB() {
   await seedProductos();
+  await seedUsuarios();
 }
 
 export { getDB };
